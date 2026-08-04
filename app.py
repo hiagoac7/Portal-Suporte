@@ -7446,6 +7446,7 @@ const tt={{
                     st.rerun(scope="app")
 
                 # ── PAINEL DE FILTROS — SELECTBOX / MULTISELECT ──
+                st.caption("🔍 Filtros")
                 with st.container(border=True):
                     _fa, _fb, _fc, _fd, _fe, _ff = st.columns([1.4, 1.2, 1.8, 1, 1, 0.7])
 
@@ -7453,7 +7454,7 @@ const tt={{
                         filtro_prio = st.multiselect(
                             "⚡ Urgência",
                             options=prioridades_disponiveis,
-                            default=prioridades_disponiveis,
+                            default=[],
                             key="f_prio_ch",
                             placeholder="Todas",
                         )
@@ -7464,7 +7465,7 @@ const tt={{
                         filtro_status = st.multiselect(
                             "◎ Status",
                             options=status_disponiveis,
-                            default=status_disponiveis,
+                            default=[],
                             key="f_status_ch",
                             placeholder="Todos",
                         )
@@ -7475,7 +7476,7 @@ const tt={{
                         filtro_setor = st.multiselect(
                             "◈ Setor / Unidade",
                             options=setores_disponiveis,
-                            default=setores_disponiveis,
+                            default=[],
                             key="f_setor_ch",
                             placeholder="Todos",
                         )
@@ -7630,6 +7631,7 @@ const tt={{
                     st.rerun(scope="app")
 
                 # ── PAINEL DE FILTROS — SELECTBOX / MULTISELECT ──
+                st.caption("🔍 Filtros")
                 with st.container(border=True):
                     _ca, _cb, _cc, _cd, _ce, _cf, _cg = st.columns([1.2, 1.4, 1.4, 1.4, 0.9, 0.9, 0.6])
 
@@ -7637,7 +7639,7 @@ const tt={{
                         filtro_urg_cp = st.multiselect(
                             "⚡ Urgência",
                             options=urgencias_disponiveis_cp,
-                            default=urgencias_disponiveis_cp,
+                            default=[],
                             key="f_urg_cp",
                             placeholder="Todas",
                         )
@@ -7648,7 +7650,7 @@ const tt={{
                         filtro_status_cp = st.multiselect(
                             "◎ Status",
                             options=status_disponiveis_cp,
-                            default=status_disponiveis_cp,
+                            default=[],
                             key="f_status_cp",
                             placeholder="Todos",
                         )
@@ -7659,7 +7661,7 @@ const tt={{
                         filtro_setor_cp = st.multiselect(
                             "◈ Setor",
                             options=setores_disponiveis_cp,
-                            default=setores_disponiveis_cp,
+                            default=[],
                             key="f_setor_cp",
                             placeholder="Todos",
                         )
@@ -7670,7 +7672,7 @@ const tt={{
                         filtro_cat_cp = st.multiselect(
                             "▦ Categoria",
                             options=categorias_disponiveis_cp,
-                            default=categorias_disponiveis_cp,
+                            default=[],
                             key="f_cat_cp",
                             placeholder="Todas",
                         )
