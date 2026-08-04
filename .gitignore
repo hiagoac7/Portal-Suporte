@@ -25,4 +25,6 @@ Curriculo_*.docx
 Admissao_Acessos_TI.xlsx
 Laudo_*.docx
 desktop.ini
-.claude/
+
+# Config local do Claude Code (permissões da máquina) — mantém launch.json
+.claude/settings.local.json
