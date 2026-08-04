@@ -6594,6 +6594,80 @@ Status sugerido: Concluído após validação com o usuário."""
             "🛒  Auditoria de Compras",
         ])
 
+        # ── GRADES NATIVAS DA FILA (st.dataframe) ──────────────────────────
+        # Substituem os cards HTML desenhados linha a linha: a grade nativa já
+        # ordena por coluna, redimensiona e permite selecionar uma linha para
+        # abrir o modal de ação — sem reinventar isso em CSS.
+        _ICONE_PRIO = {"Baixa": "🔵", "Média": "🟡", "Alta": "🟠", "Crítica": "🔴"}
+        _ICONE_STATUS_CH = {"Aberto": "🔴 Aberto", "Em Atendimento": "🟡 Em Atendimento", "Concluído": "🟢 Concluído"}
+        _ICONE_STATUS_CP = {
+            "Pendente": "⏳ Pendente", "Em Análise": "🔍 Em Análise", "Aprovado": "✅ Aprovado",
+            "Recusado": "❌ Recusado", "Concluído": "🟢 Concluído",
+        }
+
+        def _truncar(texto, tam=120):
+            texto = str(texto).strip()
+            return texto[:tam] + "…" if len(texto) > tam else texto
+
+        def _tabela_fila_chamados(df):
+            linhas = [{
+                "Protocolo": primeiro_valor(row, "Protocolo", padrao=f"#{formatar_id(idx)}"),
+                "Usuário": row.get("Usuário", ""),
+                "Setor": row.get("Setor", ""),
+                "Categoria": extrair_categoria(row),
+                "Prioridade": f"{_ICONE_PRIO.get(str(row.get('Prioridade', '')).strip(), '⚪')} {row.get('Prioridade', '—')}",
+                "Status": _ICONE_STATUS_CH.get(str(row.get("Status", "")).strip(), row.get("Status", "—")),
+                "Em fila": tempo_decorrido(row.get("Data", "")),
+                "Anexo": "📎 Sim" if str(row.get("Anexo", "Nenhum")) not in ["Nenhum", "", "nan"] else "—",
+                "Descrição": _truncar(row.get("Descrição", "")),
+            } for idx, row in df.iterrows()]
+            return pd.DataFrame(linhas, index=df.index)
+
+        def _tabela_historico_chamados(df):
+            linhas = [{
+                "Protocolo": primeiro_valor(row, "Protocolo", padrao=f"#{formatar_id(idx)}"),
+                "Usuário": row.get("Usuário", ""),
+                "Setor": row.get("Setor", ""),
+                "Categoria": extrair_categoria(row),
+                "Prioridade": str(row.get("Prioridade", "—")).strip() or "—",
+                "Concluído em": row.get("Atualizado em") or row.get("Data", ""),
+            } for idx, row in df.iterrows()]
+            return pd.DataFrame(linhas, index=df.index)
+
+        def _tabela_fila_compras(df):
+            linhas = [{
+                "Protocolo": primeiro_valor(row, "Protocolo", padrao=f"#{formatar_id(idx)}"),
+                "Item": row.get("Item", ""),
+                "Usuário": row.get("Usuário", ""),
+                "Setor": row.get("Setor", ""),
+                "Categoria": row.get("Categoria", ""),
+                "Urgência": str(row.get("Urgência", "—")).strip() or "—",
+                "Qtd": row.get("Quantidade", ""),
+                "Status": _ICONE_STATUS_CP.get(str(row.get("Status", "")).strip(), row.get("Status", "—")),
+                "Justificativa": _truncar(row.get("Justificativa", "")),
+            } for idx, row in df.iterrows()]
+            return pd.DataFrame(linhas, index=df.index)
+
+        def _tabela_historico_compras(df):
+            linhas = [{
+                "Protocolo": primeiro_valor(row, "Protocolo", padrao=f"#{formatar_id(idx)}"),
+                "Item": row.get("Item", ""),
+                "Usuário": row.get("Usuário", ""),
+                "Setor": row.get("Setor", ""),
+                "Categoria": row.get("Categoria", ""),
+                "Qtd": row.get("Quantidade", ""),
+                "Status": _ICONE_STATUS_CP.get(str(row.get("Status", "")).strip(), row.get("Status", "—")),
+                "Data": row.get("Data", ""),
+            } for idx, row in df.iterrows()]
+            return pd.DataFrame(linhas, index=df.index)
+
+        def _linha_selecionada(evento, df):
+            """(idx, linha) marcados na grade, mapeados de volta ao índice real do DataFrame de origem."""
+            if not evento or not evento.selection or not evento.selection.rows:
+                return None, None
+            idx = df.index[evento.selection.rows[0]]
+            return idx, df.loc[idx]
+
         # ── FRAGMENT COM ANALYTICS APRIMORADO E ANIMADO ──
         @st.fragment
         def renderizar_analytics_realtime():
@@ -7476,45 +7550,22 @@ const tt={{
 
                 st.markdown("#### ⚡ Fila de Trabalho Ativa")
                 if not df_ativa.empty:
-                    for idx, row in df_ativa.iterrows():
-                        prio = str(row.get('Prioridade', '—'))
-                        status_atual = str(row.get('Status', '—'))
-                        status_html = (
-                            '<span class="pill pill-red">🔴 Aberto</span>'
-                            if status_atual == "Aberto"
-                            else '<span class="pill pill-amber">🟡 Em Atendimento</span>'
-                        )
-                        desc_texto = str(row.get('Descrição', '')).strip()
-                        desc_preview = desc_texto[:150] + '...' if len(desc_texto) > 150 else desc_texto
-                        tempo_fila = tempo_decorrido(row.get("Data", ""))
-                        anexo_lbl = "Sem anexo" if str(row.get('Anexo', 'Nenhum')) in ["Nenhum", "", "nan"] else "Anexo disponível"
-
-                        with st.container(border=True):
-                            st.markdown(f"""
-                            <div class="queue-card {classe_fila(prio)}">
-                                <div class="work-card-head">
-                                    <div>
-                                        <div class="work-card-id">Chamado {escapar_html(primeiro_valor(row, 'Protocolo', padrao=f'#{formatar_id(idx)}'))}</div>
-                                        <div class="work-card-title">{escapar_html(row.get('Usuário'))}</div>
-                                        <div class="work-card-subtitle">{escapar_html(row.get('Setor'))} • {escapar_html(extrair_categoria(row))} • {escapar_html(row.get('Data'))}</div>
-                                    </div>
-                                    <div class="work-badge-row">
-                                        {status_html}
-                                    </div>
-                                </div>
-                                <div class="work-card-desc">{html.escape(desc_preview)}</div>
-                                <div class="work-card-meta">
-                                    <span>⚡ Urgência <strong>{escapar_html(prio)}</strong></span>
-                                    <span>⏱ Em fila <strong>{escapar_html(tempo_fila)}</strong></span>
-                                    <span>📎 <strong>{escapar_html(anexo_lbl)}</strong></span>
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-
-                            _sp_q, c_action = st.columns([3, 1])
-                            with c_action:
-                                if st.button("🔧 Despachar", key=f"btn_ch_{idx}", use_container_width=True, type="secondary"):
-                                    modal_responder_chamado(idx, row)
+                    _evt_fila_ch = st.dataframe(
+                        _tabela_fila_chamados(df_ativa),
+                        use_container_width=True,
+                        hide_index=True,
+                        selection_mode="single-row",
+                        on_select="rerun",
+                        key="grid_fila_chamados",
+                        column_config={"Descrição": st.column_config.TextColumn(width="large")},
+                    )
+                    _idx_sel_ch, _row_sel_ch = _linha_selecionada(_evt_fila_ch, df_ativa)
+                    if _idx_sel_ch is not None:
+                        if st.button("🔧 Despachar chamado selecionado", key="btn_despachar_sel_ch",
+                                     use_container_width=True, type="primary"):
+                            modal_responder_chamado(_idx_sel_ch, _row_sel_ch)
+                    else:
+                        st.caption("Clique numa linha da tabela para selecionar o chamado e despachá-lo.")
                 else:
                     st.markdown('<div class="empty-state"><strong>Fila de chamados limpa</strong><span>Nenhum chamado aberto ou em atendimento no filtro atual.</span></div>', unsafe_allow_html=True)
 
@@ -7532,32 +7583,21 @@ const tt={{
                             <span class="history-count">{len(df_historico)} registros</span>
                         </div>
                     """, unsafe_allow_html=True)
-                     
-                        for idx, row in df_historico.iterrows():
-                            prio_hist = str(row.get('Prioridade', '—')).strip() or "—"
-                            protocolo_hist = escapar_html(primeiro_valor(row, 'Protocolo', padrao=f'#{formatar_id(idx)}'))
-                            usuario_hist = escapar_html(row.get('Usuário'))
-                            setor_hist = escapar_html(row.get('Setor'))
-                            categoria_hist = escapar_html(extrair_categoria(row))
-                            data_hist = escapar_html(row.get('Data'))
 
-                            with st.container(border=True):
-                                h_col_info, h_col_action = st.columns([6.6, 1])
-
-                                with h_col_info:
-                                    st.markdown(f"""
-                                    <div class="arc-row">
-                                        <span class="arc-id">{protocolo_hist}</span>
-                                        <span class="arc-user">{usuario_hist}</span>
-                                        <span class="arc-meta">{setor_hist} • {categoria_hist} • {escapar_html(prio_hist)}</span>
-                                        <span class="arc-date">{data_hist}</span>
-                                    </div>
-                                """, unsafe_allow_html=True)
-
-                                with h_col_action:
-                                    # Chama o mesmo modal usado para despachar chamados novos
-                                    if st.button("✏️ Editar", key=f"btn_edit_hist_{idx}", use_container_width=True):
-                                        modal_responder_chamado(idx, row)
+                        _evt_hist_ch = st.dataframe(
+                            _tabela_historico_chamados(df_historico),
+                            use_container_width=True,
+                            hide_index=True,
+                            selection_mode="single-row",
+                            on_select="rerun",
+                            key="grid_historico_chamados",
+                        )
+                        _idx_sel_hch, _row_sel_hch = _linha_selecionada(_evt_hist_ch, df_historico)
+                        if _idx_sel_hch is not None:
+                            # Reabre o mesmo modal usado para despachar chamados novos
+                            if st.button("✏️ Editar chamado selecionado", key="btn_edit_hist_sel",
+                                         use_container_width=True):
+                                modal_responder_chamado(_idx_sel_hch, _row_sel_hch)
                     else:
                         st.markdown('<div class="empty-state"><strong>Sem histórico concluído</strong><span>Nenhum chamado concluído dentro do filtro atual.</span></div>', unsafe_allow_html=True)
             else:
@@ -7715,43 +7755,22 @@ const tt={{
 
                 st.markdown("#### ⏳ Requisições de Compra Pendentes")
                 if not df_comp_ativa.empty:
-                    for idx_c, row_c in df_comp_ativa.iterrows():
-                        urgencia_atual = str(row_c.get('Urgência', '—'))
-                        status_compra = str(row_c.get('Status', '—'))
-                        status_html = (
-                            '<span class="pill pill-gray">⏳ Pendente</span>'
-                            if status_compra == "Pendente"
-                            else '<span class="pill pill-amber">🔍 Em Análise</span>'
-                        )
-                        justificativa = str(row_c.get('Justificativa', '')).strip()
-                        just_preview = justificativa[:150] + '...' if len(justificativa) > 150 else justificativa
-
-                        with st.container(border=True):
-                            st.markdown(f"""
-                            <div class="queue-card {classe_fila(urgencia_atual)}">
-                                <div class="work-card-head">
-                                    <div>
-                                        <div class="work-card-id">Requisição {escapar_html(primeiro_valor(row_c, 'Protocolo', padrao=f'#{formatar_id(idx_c)}'))}</div>
-                                        <div class="work-card-title">{escapar_html(row_c.get('Item'))}</div>
-                                        <div class="work-card-subtitle">{escapar_html(row_c.get('Usuário'))} • {escapar_html(row_c.get('Setor'))} • {escapar_html(row_c.get('Data'))}</div>
-                                    </div>
-                                    <div class="work-badge-row">
-                                        {status_html}
-                                    </div>
-                                </div>
-                                <div class="work-card-desc">{html.escape(just_preview)}</div>
-                                <div class="work-card-meta">
-                                    <span>⚡ Urgência <strong>{escapar_html(urgencia_atual)}</strong></span>
-                                    <span>📦 Qtd <strong>{escapar_html(row_c.get("Quantidade"))}</strong></span>
-                                    <span>🏷️ <strong>{escapar_html(row_c.get("Categoria"))}</strong></span>
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-
-                            _sp_c, cc_action = st.columns([3, 1])
-                            with cc_action:
-                                if st.button("🔍 Analisar", key=f"btn_cp_{idx_c}", use_container_width=True, type="secondary"):
-                                    modal_responder_compra(idx_c, row_c)
+                    _evt_fila_cp = st.dataframe(
+                        _tabela_fila_compras(df_comp_ativa),
+                        use_container_width=True,
+                        hide_index=True,
+                        selection_mode="single-row",
+                        on_select="rerun",
+                        key="grid_fila_compras",
+                        column_config={"Justificativa": st.column_config.TextColumn(width="large")},
+                    )
+                    _idx_sel_cp, _row_sel_cp = _linha_selecionada(_evt_fila_cp, df_comp_ativa)
+                    if _idx_sel_cp is not None:
+                        if st.button("🔍 Analisar requisição selecionada", key="btn_analisar_sel_cp",
+                                     use_container_width=True, type="primary"):
+                            modal_responder_compra(_idx_sel_cp, _row_sel_cp)
+                    else:
+                        st.caption("Clique numa linha da tabela para selecionar a requisição e analisá-la.")
                 else:
                     st.markdown('<div class="empty-state"><strong>Compras auditadas</strong><span>Não há solicitações pendentes ou em análise no momento.</span></div>', unsafe_allow_html=True)
 
@@ -7769,46 +7788,19 @@ const tt={{
                         </div>
                     """, unsafe_allow_html=True)
 
-                        for idx_c, row_c in df_comp_historico.iterrows():
-                            urg_hist  = str(row_c.get('Urgência', '—')).strip() or "—"
-                            status_c  = str(row_c.get('Status',   '—')).strip() or "—"
-
-                            if status_c == "Aprovado":
-                                status_badge = '<span class="pill pill-blue">✅ Aprovado</span>'
-                            elif status_c == "Concluído":
-                                status_badge = '<span class="pill pill-green">🟢 Concluído</span>'
-                            elif status_c == "Recusado":
-                                status_badge = '<span class="pill pill-red">❌ Recusado</span>'
-                            else:
-                                status_badge = f'<span class="pill pill-gray">{escapar_html(status_c)}</span>'
-
-                            protocolo_c  = escapar_html(primeiro_valor(row_c, 'Protocolo', padrao=f'#{formatar_id(idx_c)}'))
-                            item_c       = escapar_html(row_c.get('Item'))
-                            usuario_c    = escapar_html(row_c.get('Usuário'))
-                            setor_c      = escapar_html(row_c.get('Setor'))
-                            categoria_c  = escapar_html(row_c.get('Categoria'))
-                            data_c       = escapar_html(row_c.get('Data'))
-                            qtd_c        = escapar_html(row_c.get('Quantidade'))
-
-                            card_html = (
-                                '<div class="arc-row">'
-                                f'<span class="arc-id">{protocolo_c}</span>'
-                                f'<span class="arc-user">{item_c}</span>'
-                                f'<span class="arc-meta">{usuario_c} • {setor_c} • {categoria_c} • Qtd: {qtd_c}</span>'
-                                f'{status_badge}'
-                                f'<span class="arc-date">{data_c}</span>'
-                                '</div>'
-                            )
-
-                            with st.container(border=True):
-                                h_col_info, h_col_action = st.columns([6.6, 1])
-
-                                with h_col_info:
-                                    st.markdown(card_html, unsafe_allow_html=True)
-
-                                with h_col_action:
-                                    if st.button("✏️ Rever", key=f"btn_edit_cp_{idx_c}", use_container_width=True):
-                                        modal_responder_compra(idx_c, row_c)
+                        _evt_hist_cp = st.dataframe(
+                            _tabela_historico_compras(df_comp_historico),
+                            use_container_width=True,
+                            hide_index=True,
+                            selection_mode="single-row",
+                            on_select="rerun",
+                            key="grid_historico_compras",
+                        )
+                        _idx_sel_hcp, _row_sel_hcp = _linha_selecionada(_evt_hist_cp, df_comp_historico)
+                        if _idx_sel_hcp is not None:
+                            if st.button("✏️ Rever requisição selecionada", key="btn_rever_sel_cp",
+                                         use_container_width=True):
+                                modal_responder_compra(_idx_sel_hcp, _row_sel_hcp)
                     else:
                         st.markdown('<div class="empty-state"><strong>Sem arquivo finalizado</strong><span>Nenhuma requisição aprovada, recusada ou concluída até o momento.</span></div>', unsafe_allow_html=True)
             else:
