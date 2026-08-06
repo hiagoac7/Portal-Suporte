@@ -5559,7 +5559,11 @@ elif pagina == "historico":
                 </div>
                 """, unsafe_allow_html=True)
 
-            for _tipo, _data_dt, idx, row in _eventos[:40]:
+            # Monta a tabela (todos os registros, sem cortar em 40) e um
+            # painel de detalhe para a linha selecionada — no lugar de um
+            # card HTML por registro.
+            _linhas_hist, _detalhes_hist = [], []
+            for _tipo, _data_dt, idx, row in _eventos:
                 status_atual = str(row.get('Status', '—')).strip()
                 protocolo = primeiro_valor(row, 'Protocolo', padrao=f'#{formatar_id(idx)}')
                 data_str = str(row.get('Data', '—'))
@@ -5571,84 +5575,89 @@ elif pagina == "historico":
                     categoria = extrair_categoria(row)
                     desc_texto = str(row.get('Descrição', '')).strip()
                     desc_preview = desc_texto[:160] + '...' if len(desc_texto) > 160 else desc_texto
-                    tecnico = html.escape(str(row.get('Técnico Responsável', 'Não atribuído')))
+                    tecnico = str(row.get('Técnico Responsável', 'Não atribuído'))
                     resposta = str(row.get('Resposta do Técnico', '—'))
-                    _hs = "hs-open" if status_atual == "Aberto" else ("hs-prog" if status_atual == "Em Atendimento" else "hs-done")
                     _ico, _tipo_lbl = "🎫", "Chamado"
-                    status_pill = ('<span class="pill pill-red">🔴 Aberto</span>' if status_atual == "Aberto"
-                                   else '<span class="pill pill-amber">🟡 Em Atendimento</span>' if status_atual == "Em Atendimento"
-                                   else '<span class="pill pill-green">✅ Concluído</span>')
+                    status_txt = ('🔴 Aberto' if status_atual == "Aberto"
+                                  else '🟡 Em Atendimento' if status_atual == "Em Atendimento"
+                                  else '✅ Concluído')
                     prox = ("Aguardando triagem/atribuição da TI." if status_atual == "Aberto"
                             else "Técnico trabalhando — aguarde retorno." if status_atual == "Em Atendimento"
                             else "Resolvido. Nenhuma ação necessária.")
-                    _meta_extra = f'⚡ {escapar_html(prio)} • 🗂 {escapar_html(categoria)}'
                     titulo = desc_preview or "(sem descrição)"
+                    detalhe = {
+                        "tipo": "chamado", "tecnico": tecnico, "resposta": resposta,
+                        "desc_texto": desc_texto, "anexo": str(row.get('Anexo', '')),
+                    }
                 else:
-                    urg = str(row.get('Urgência', '—'))
                     item = str(row.get('Item', '—')).strip()
                     desc_preview = item[:160] + '...' if len(item) > 160 else item
-                    resposta = None
-                    tecnico = None
-                    _hs = ("hs-done" if any(s in status_atual for s in ["Aprovado", "Concluído"])
-                           else "hs-open" if "Recusado" in status_atual else "hs-prog")
                     _ico, _tipo_lbl = "🛒", "Compra"
-                    status_pill = ('<span class="pill pill-gray">⏳ Pendente</span>' if "Pendente" in status_atual
-                                   else '<span class="pill pill-amber">🔍 Em Análise</span>' if "Análise" in status_atual
-                                   else '<span class="pill pill-blue">✅ Aprovado</span>' if "Aprovado" in status_atual
-                                   else '<span class="pill pill-red">❌ Recusado</span>' if "Recusado" in status_atual
-                                   else '<span class="pill pill-green">🟢 Concluído</span>')
+                    status_txt = ('⏳ Pendente' if "Pendente" in status_atual
+                                  else '🔍 Em Análise' if "Análise" in status_atual
+                                  else '✅ Aprovado' if "Aprovado" in status_atual
+                                  else '❌ Recusado' if "Recusado" in status_atual
+                                  else '🟢 Concluído')
                     prox = ("Aguardando análise da TI." if ("Pendente" in status_atual or "Análise" in status_atual)
                             else "Aprovada — acompanhe a entrega." if "Aprovado" in status_atual
                             else "Recusada — verifique a justificativa." if "Recusado" in status_atual
                             else "Concluída.")
-                    _meta_extra = f'📦 {escapar_html(str(row.get("Quantidade", "—")))} • 🏷️ {escapar_html(str(row.get("Categoria", "—")))}'
                     titulo = desc_preview or "(sem item)"
+                    detalhe = {
+                        "tipo": "compra", "quantidade": row.get("Quantidade", "—"),
+                        "justificativa": row.get("Justificativa", "—"),
+                    }
 
-                # cor da barra = mesma cor do status usado nos filtros (🔴/🟡/✅)
-                _hs_color = {"hs-open": "#f87171", "hs-prog": "#fbbf24", "hs-done": "#34d399"}.get(_hs, "#38bdf8")
+                _linhas_hist.append({
+                    "Tipo": f"{_ico} {_tipo_lbl}",
+                    "Protocolo": protocolo,
+                    "Título": titulo,
+                    "Status": status_txt,
+                    "Aberto há": aberto_ha,
+                    "Data": data_str,
+                })
+                detalhe.update({"prox": prox, "no_status_ha": no_status_ha})
+                _detalhes_hist.append(detalhe)
 
-                with st.container(border=True):
-                    st.markdown(f"""
-                    <div class="hist-scope">
-                    <div class="queue-card {_hs}" style="--hs-accent:{_hs_color};">
-                        <div class="work-card-head">
-                            <div>
-                                <div class="work-card-id">{_ico} {_tipo_lbl} {escapar_html(protocolo)}</div>
-                                <div class="work-card-title">{escapar_html(titulo)}</div>
-                                <div class="work-card-subtitle">{escapar_html(_nome_disp)} • {escapar_html(data_str)}</div>
-                            </div>
-                            <div class="work-badge-row">
-                                {status_pill}
-                            </div>
-                        </div>
-                        <div class="hist-metrics">
-                            <div class="hm"><span class="hm-l">Aberto há</span><span class="hm-v">{aberto_ha}</span></div>
-                            <div class="hm"><span class="hm-l">No status há</span><span class="hm-v">{no_status_ha}</span></div>
-                            <div class="hm hm-wide"><span class="hm-l">Próxima ação</span><span class="hm-v">{escapar_html(prox)}</span></div>
-                        </div>
-                        <div class="work-card-desc">{_meta_extra}</div>
-                    </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    with st.expander("Ver detalhes", expanded=False):
-                        if _tipo == "chamado":
-                            _resp_txt = html.escape(resposta) if resposta and resposta not in ['—', 'nan', 'Aguardando'] else 'Aguardando resposta do técnico.'
-                            st.markdown(f'<div class="meta-chip"><strong>🔧 Técnico:</strong> &nbsp;{tecnico}</div>', unsafe_allow_html=True)
+            if _linhas_hist:
+                _evt_hist_pessoal = st.dataframe(
+                    pd.DataFrame(_linhas_hist),
+                    use_container_width=True,
+                    hide_index=True,
+                    selection_mode="single-row",
+                    on_select="rerun",
+                    key="grid_historico_pessoal",
+                    column_config={"Título": st.column_config.TextColumn(width="large")},
+                )
+                _sel_hist = (_evt_hist_pessoal.selection.rows
+                             if _evt_hist_pessoal and _evt_hist_pessoal.selection else [])
+                if _sel_hist:
+                    _d = _detalhes_hist[_sel_hist[0]]
+                    with st.container(border=True):
+                        st.markdown(f'<div class="meta-chip"><strong>⏱ No status há:</strong> &nbsp;{escapar_html(_d["no_status_ha"])}</div>', unsafe_allow_html=True)
+                        st.write("")
+                        st.markdown(f'<div class="meta-chip" style="height:auto;align-items:flex-start;padding:10px 12px;"><div><strong>🎯 Próxima ação:</strong><br><span style="color:#94a3b8;font-size:.78rem;">{escapar_html(_d["prox"])}</span></div></div>', unsafe_allow_html=True)
+                        if _d["tipo"] == "chamado":
+                            _resp_txt = (html.escape(_d["resposta"]) if _d["resposta"] and _d["resposta"] not in ['—', 'nan', 'Aguardando']
+                                         else 'Aguardando resposta do técnico.')
+                            st.write("")
+                            st.markdown(f'<div class="meta-chip"><strong>🔧 Técnico:</strong> &nbsp;{html.escape(_d["tecnico"])}</div>', unsafe_allow_html=True)
                             st.write("")
                             st.markdown(f'<div class="meta-chip" style="height:auto;align-items:flex-start;padding:10px 12px;"><div><strong>💬 Resposta:</strong><br><span style="color:#94a3b8;font-size:.78rem;">{_resp_txt}</span></div></div>', unsafe_allow_html=True)
-                            if desc_texto:
+                            if _d["desc_texto"]:
                                 st.write("")
-                                st.markdown(f'<div class="ux-note" style="margin-top:0;"><strong>📝 Descrição completa:</strong> {html.escape(desc_texto)}</div>', unsafe_allow_html=True)
-                            _anexo = str(row.get('Anexo', ''))
-                            if _anexo and _anexo not in ["Nenhum", "nan", ""]:
-                                st.caption(f"📎 Anexo: {html.escape(_anexo)}")
+                                st.markdown(f'<div class="ux-note" style="margin-top:0;"><strong>📝 Descrição completa:</strong> {html.escape(_d["desc_texto"])}</div>', unsafe_allow_html=True)
+                            if _d["anexo"] and _d["anexo"] not in ["Nenhum", "nan", ""]:
+                                st.caption(f"📎 Anexo: {html.escape(_d['anexo'])}")
                         else:
-                            _just = html.escape(str(row.get('Justificativa', '—')))
+                            _just = html.escape(str(_d["justificativa"] or "—"))
                             _just_txt = _just if _just and _just != "—" else "Não informada."
-                            st.markdown(f'<div class="meta-chip"><strong>📦 Quantidade:</strong> &nbsp;{html.escape(str(row.get("Quantidade", "—")))}</div>', unsafe_allow_html=True)
+                            st.write("")
+                            st.markdown(f'<div class="meta-chip"><strong>📦 Quantidade:</strong> &nbsp;{html.escape(str(_d["quantidade"]))}</div>', unsafe_allow_html=True)
                             st.write("")
                             st.markdown(f'<div class="meta-chip" style="height:auto;align-items:flex-start;padding:10px 12px;"><div><strong>📝 Justificativa:</strong><br><span style="color:#94a3b8;font-size:.78rem;">{_just_txt}</span></div></div>', unsafe_allow_html=True)
+                else:
+                    st.caption("Clique numa linha da tabela para ver os detalhes completos.")
             return
 
     # ═══════════════════════════════════════════════════════
@@ -8881,32 +8890,27 @@ elif pagina == "relatorios":
         .tp-badge.b-orange{background:rgba(249,115,22,.16);color:#fdba74;}
         </style>''', unsafe_allow_html=True)
 
-        _PRIO_BADGE = {"Baixa":"b-blue", "Média":"b-amber", "Alta":"b-orange", "Crítica":"b-red"}
-        _STATUS_BADGE = {"Aberto":"b-amber","Em Atendimento":"b-blue","Concluído":"b-green","Pendente":"b-amber","Aprovado":"b-green","Em Análise":"b-blue","Cancelado":""}
+        _PRIO_BADGE = {"Baixa":"🔵", "Média":"🟡", "Alta":"🟠", "Crítica":"🔴"}
+        _STATUS_BADGE = {"Aberto":"🟡","Em Atendimento":"🔵","Concluído":"🟢","Pendente":"🟡","Aprovado":"🟢","Em Análise":"🔵","Cancelado":"⚪","Recusado":"🔴"}
 
         def _tabela_pro(df, bar_col=None, badge_map=None, headers=None):
-            cols = list(df.columns)
-            hd = headers or {}
-            maxv = float(df[bar_col].max()) if (bar_col and bar_col in df.columns and len(df)) else 0.0
-            th = "".join(f"<th>{html.escape(str(hd.get(c, c)))}</th>" for c in cols)
-            body = []
-            for _, r in df.iterrows():
-                tds = []
-                for c in cols:
-                    val = r[c]
-                    if bar_col and c == bar_col and maxv:
-                        pct = int(float(val) / maxv * 100)
-                        cell = (f'<div class="tp-bar"><div class="tp-bar-fill" style="width:{pct}%"></div>'
-                                f'<span class="tp-bar-val">{html.escape(str(val))}</span></div>')
-                    elif badge_map and c in badge_map:
-                        cls = badge_map[c].get(str(val), "")
-                        cell = f'<span class="tp-badge {cls}">{html.escape(str(val))}</span>'
-                    else:
-                        cell = html.escape(str(val))
-                    tds.append(f"<td>{cell}</td>")
-                body.append("<tr>" + "".join(tds) + "</tr>")
-            st.markdown(f'<table class="tbl-pro"><thead><tr>{th}</tr></thead><tbody>{"".join(body)}</tbody></table>',
-                        unsafe_allow_html=True)
+            """Grade nativa (st.dataframe): barra de volume via ProgressColumn,
+            emoji como indicador de status/prioridade no lugar de badge HTML."""
+            df_show = df.copy()
+            if badge_map:
+                for col, icones in badge_map.items():
+                    if col in df_show.columns:
+                        df_show[col] = df_show[col].map(lambda v: f"{icones.get(str(v), '⚪')} {v}")
+            column_config = {}
+            if headers:
+                df_show = df_show.rename(columns=headers)
+            if bar_col:
+                bar_label = (headers or {}).get(bar_col, bar_col)
+                maxv = float(df[bar_col].max()) if len(df) else 0.0
+                column_config[bar_label] = st.column_config.ProgressColumn(
+                    bar_label, format="%d", min_value=0, max_value=max(maxv, 1)
+                )
+            st.dataframe(df_show, use_container_width=True, hide_index=True, column_config=column_config)
 
         tab_t1, tab_t2, tab_t3, tab_t4 = st.tabs([
             "📋 Volumetria por Setor",
