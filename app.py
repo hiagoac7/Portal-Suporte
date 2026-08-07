@@ -3839,6 +3839,41 @@ def primeiro_valor(row, *colunas, padrao="—"):
     return padrao
 
 
+_EXT_IMAGEM = (".png", ".jpg", ".jpeg")
+
+def renderizar_anexo(nome_arquivo, key=None):
+    """Mostra o anexo de um chamado (imagem inline ou botão de download do PDF).
+
+    Antes disso o anexo só aparecia como texto (nome do arquivo) — salvo em
+    disco em anexos/, mas sem nenhum jeito de abrir/baixar pela tela do
+    Gestor. Isso deixava a triagem sem acesso à evidência anexada pelo
+    colaborador.
+    """
+    nome = str(nome_arquivo or "").strip()
+    if not nome or nome.lower() in ("nenhum", "nan", "none", ""):
+        st.caption("📎 Sem anexo.")
+        return
+
+    caminho = os.path.join("anexos", nome)
+    if not os.path.isfile(caminho):
+        st.warning(f"📎 Anexo registrado (**{nome}**) mas o arquivo não foi encontrado em `anexos/`.")
+        return
+
+    with open(caminho, "rb") as _f:
+        dados = _f.read()
+
+    _ext = os.path.splitext(nome)[1].lower()
+    if _ext in _EXT_IMAGEM:
+        st.image(dados, caption=nome, width=320)
+    st.download_button(
+        "📎 Abrir/baixar anexo" if _ext not in _EXT_IMAGEM else "⬇️ Baixar em tamanho original",
+        data=dados,
+        file_name=nome,
+        key=key or f"dl_anexo_{nome}",
+        use_container_width=False,
+    )
+
+
 def ordenar_por_prioridade_e_data(df, coluna_prioridade):
     if df.empty:
         return df
@@ -5647,8 +5682,7 @@ elif pagina == "historico":
                             if _d["desc_texto"]:
                                 st.write("")
                                 st.markdown(f'<div class="ux-note" style="margin-top:0;"><strong>📝 Descrição completa:</strong> {html.escape(_d["desc_texto"])}</div>', unsafe_allow_html=True)
-                            if _d["anexo"] and _d["anexo"] not in ["Nenhum", "nan", ""]:
-                                st.caption(f"📎 Anexo: {html.escape(_d['anexo'])}")
+                            renderizar_anexo(_d["anexo"], key=f"dl_anexo_hist_{_sel_hist[0]}")
                         else:
                             _just = html.escape(str(_d["justificativa"] or "—"))
                             _just_txt = _just if _just and _just != "—" else "Não informada."
@@ -6445,7 +6479,7 @@ Status sugerido: Concluído após validação com o usuário."""
             st.write(f"**Data de Abertura:** {row['Data']}")
             st.write(f"**Tipo detectado:** {tipo_detectado} | **Impacto:** {primeiro_valor(row, 'Impacto')}")
             st.markdown(f"> **Descrição:** {row['Descrição']}")
-            st.caption(f"Anexo: {row['Anexo']}")
+            renderizar_anexo(row.get('Anexo'), key=f"dl_anexo_ch_{idx}")
             st.markdown("---")
 
             ccc1, ccc2 = st.columns(2)
