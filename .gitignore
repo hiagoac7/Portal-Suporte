@@ -1,30 +1,14 @@
-# Ambiente virtual
-venv/
+﻿# Portal de Suporte - arquivos que nao vao para o Git
 __pycache__/
 *.pyc
-
-# Segredos — NUNCA versionar
+*.pyo
 .streamlit/secrets.toml
-
-# Dados reais / operacionais (contêm chamados, compras, anexos de usuários)
-servicedesk.db
-servicedesk.db-journal*
-*.csv
-backups/
-exports/
-anexos/
-
-# Lixo / temporários
 *.bak
-*.tmp
-.fuse_hidden*
-_wtest.tmp
-
-# Pessoal / RH — fora do controle de versão do app
-Curriculo_*.docx
-Admissao_Acessos_TI.xlsx
-Laudo_*.docx
-desktop.ini
-
-# Config local do Claude Code (permissões da máquina) — mantém launch.json
-.claude/settings.local.json
+dados/servicedesk.db
+dados/anexos/
+dados/backups/
+.env
+.env.*
+*.log
+.venv/
+venv/

@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git reset *)",
+      "Bash(git commit -m 'Estado inicial do Portal de Suporte antes da reforma visual *)",
+      "Bash(git config *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(./venv/Scripts/python.exe -c \"import streamlit; print\\(streamlit.__version__\\)\")",
+      "Bash(./venv/Scripts/python.exe sanitize_app.py)",
+      "Bash(./venv/Scripts/python.exe -m py_compile app.py)",
+      "Bash(git commit -m 'Painel do Gestor: trocar cards HTML por grades nativas \\(st.dataframe\\) *)",
+      "Bash(git merge --no-ff item-1-painel-gestor -m 'Merge item-1-painel-gestor: grades nativas no Painel do Gestor *)",
+      "Bash(git commit -m 'Gestor: filtros de Chamados/Compras comecam vazios \\(sem poluir a tela\\) *)",
+      "Bash(git merge --no-ff item-2-filtros-limpos -m 'Merge item-2-filtros-limpos: filtros do Gestor comecam vazios *)",
+      "Bash(awk 'NR==191,NR==3300' app.py)",
+      "Bash(./venv/Scripts/python.exe -c ' *)",
+      "Bash(git commit -m 'Historico e Relatorios: tabelas nativas no lugar de cards/HTML manual *)"
+    ]
+  }
+}

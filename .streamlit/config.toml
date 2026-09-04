@@ -1,7 +1,17 @@
+# Identidade TLM — o Streamlit escolhe o bloco conforme a preferência do
+# usuário (menu ⋮ > Settings > Appearance: Light / Dark / System).
 [theme]
-base="dark"
-primaryColor="#38bdf8"
-backgroundColor="#080d18"
-secondaryBackgroundColor="#0f1929"
-textColor="#f8fafc"
 font="sans serif"
+primaryColor="#ffb700"
+
+[theme.light]
+backgroundColor="#f6f4f0"
+secondaryBackgroundColor="#ffffff"
+textColor="#14130f"
+primaryColor="#0c0c0c"
+
+[theme.dark]
+backgroundColor="#0d0d0c"
+secondaryBackgroundColor="#1a1a18"
+textColor="#f5f3ee"
+primaryColor="#ffb700"

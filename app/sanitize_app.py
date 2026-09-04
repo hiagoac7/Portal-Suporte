@@ -1,22 +1,4 @@
 # -*- coding: utf-8 -*-
-# Saneamento + verificacao de integridade do app.py antes de iniciar o Streamlit.
-#
-# O FINAL do app.py corrompe de forma recorrente (lixo grudado no fim do
-# arquivo). Ja foram observados dois tipos de dano:
-#   1) bytes nulos (0x00) no final -> "source code string cannot contain null bytes";
-#   2) caractere UTF-8 cortado pela metade no final -> "'utf-8' codec can't
-#      decode bytes ... unexpected end of data".
-# As "linhas-tampao" no fim do app.py absorvem o impacto; este script remove o
-# lixo do final.
-#
-# ALEM DISSO, este script GARANTE QUE O APP.PY COMPILA. Se, depois do
-# saneamento, o arquivo ainda estiver quebrado (ex.: conteudo truncado de
-# verdade, que nao da pra limpar so removendo bytes), ele:
-#   - salva o app.py quebrado em backups/app_QUEBRADO_<timestamp>.py (pericia);
-#   - restaura automaticamente o backup VALIDO mais recente da pasta backups/;
-#   - assim o portal nunca sobe com codigo quebrado nem perde conteudo em silencio.
-#
-# Roda automaticamente pelo ligar_portal.bat.
 
 import os
 import shutil
@@ -24,7 +6,7 @@ from datetime import datetime
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 ALVO = os.path.join(BASE, "app.py")
-BACKUP_DIR = os.path.join(BASE, "backups")
+BACKUP_DIR = os.path.join(os.path.dirname(BASE), "dados", "backups")
 
 
 def sanear(caminho):
@@ -39,8 +21,6 @@ def sanear(caminho):
 
     limpo = original.replace(b"\x00", b"")
 
-    # Remove bytes finais que formem uma sequencia UTF-8 incompleta:
-    # vai cortando o ultimo byte ate o conteudo decodificar inteiro.
     while limpo:
         try:
             limpo.decode("utf-8")
@@ -48,7 +28,6 @@ def sanear(caminho):
         except UnicodeDecodeError:
             limpo = limpo[:-1]
 
-    # remove espacos/linhas em branco soltos no fim e garante 1 \n final
     limpo = limpo.rstrip() + b"\n"
 
     if limpo != original:
