@@ -1,0 +1,82 @@
+
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;padding:0;background:transparent;
+    font-family:'Archivo',system-ui,'Segoe UI',Roboto,sans-serif}
+  .zc{display:flex;align-items:center;gap:9px;padding:11px 13px;cursor:pointer;
+    border:1px dashed var(--n4);border-radius:6px;background:var(--n2);
+    color:var(--t-n8);font-size:12.5px;transition:border-color .15s,color .15s}
+  .zc:hover,.zc.foco{border-color:var(--f-acc);color:var(--t-n10)}
+  .zc.ok{border-color:var(--f-ok);color:var(--c-ok);border-style:solid}
+  .zc.err{border-color:var(--f-crit-l);color:var(--c-crit-l)}
+  .zc svg{flex:none}
+  kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--n3);
+    border:1px solid var(--n5);border-radius:4px;padding:1px 5px;color:var(--t-n10)}
+</style></head><body>
+<div class="zc" id="z" tabindex="0">
+  <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor"
+       stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4.5" y="3.5" width="11" height="13" rx="1.6"/>
+    <path d="M7.8 3.5V2.8a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1v.7z"/>
+    <path d="M10 8.4v4.2M7.9 10.5l2.1-2.1 2.1 2.1"/>
+  </svg>
+  <span id="txt">Tirou print? Clique aqui e cole com <kbd>Ctrl</kbd>+<kbd>V</kbd></span>
+</div>
+<script>
+(function(){
+  var z = document.getElementById('z'), txt = document.getElementById('txt');
+  var pai = window.parent.document;
+
+  function aviso(msg, classe){
+    txt.innerHTML = msg;
+    z.className = 'zc ' + (classe || '');
+    if (classe !== 'ok') setTimeout(reset, 3500);
+  }
+  function reset(){
+    z.className = 'zc';
+    txt.innerHTML = 'Tirou print? Clique aqui e cole com <kbd>Ctrl</kbd>+<kbd>V</kbd>';
+  }
+
+  // O <input type=file> do uploader imediatamente ACIMA desta zona.
+  function alvo(){
+    var eu = window.frameElement;
+    if (!eu) return null;
+    var todos = pai.querySelectorAll('input[type=file]');
+    var anterior = null;
+    for (var i = 0; i < todos.length; i++){
+      var pos = eu.compareDocumentPosition(todos[i]);
+      if (pos & Node.DOCUMENT_POSITION_PRECEDING) anterior = todos[i];
+    }
+    return anterior;
+  }
+
+  function colar(ev){
+    var dados = ev.clipboardData || window.clipboardData;
+    if (!dados) return;
+    var itens = dados.items || [];
+    for (var i = 0; i < itens.length; i++){
+      if (itens[i].kind !== 'file') continue;
+      if (String(itens[i].type).indexOf('image/') !== 0) continue;
+      var blob = itens[i].getAsFile();
+      if (!blob) continue;
+      var ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+      var arquivo = new File([blob], 'colado_' + Date.now() + '.' + ext, {type: blob.type});
+      var inp = alvo();
+      if (!inp){ aviso('Não encontrei o campo de anexo.', 'err'); return; }
+      var dt = new DataTransfer();
+      dt.items.add(arquivo);
+      inp.files = dt.files;
+      inp.dispatchEvent(new Event('change', {bubbles: true}));
+      ev.preventDefault();
+      aviso('Imagem colada e anexada.', 'ok');
+      return;
+    }
+    aviso('A área de transferência não tem imagem.', 'err');
+  }
+
+  // Escuta nos dois documentos: o foco pode estar na página ou nesta zona.
+  pai.addEventListener('paste', colar, true);
+  document.addEventListener('paste', colar, true);
+  z.addEventListener('click', function(){ z.classList.add('foco'); z.focus(); });
+})();
+</script></body></html>
+        
