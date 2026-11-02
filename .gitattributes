@@ -1,0 +1,15 @@
+# Classify authored application code and auxiliary Windows automation.
+*.py linguist-language=Python
+*.pyw linguist-language=Python
+app/static/global.css linguist-language=CSS
+app/static/*.js linguist-language=JavaScript
+app/static/*.html linguist-language=HTML
+*.ps1 linguist-language=PowerShell
+*.bat linguist-language=Batchfile
+*.vbs linguist-language=VBScript
+
+# Streamlit's configuration is TOML: include the real configuration format.
+.streamlit/config.toml linguist-language=TOML linguist-detectable=true
+
+# Windows Explorer's desktop.ini is OS metadata, not application source.
+desktop.ini linguist-generated=true
