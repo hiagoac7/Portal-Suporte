@@ -567,6 +567,13 @@ def _carregar_estilos_globais() -> str:
     caminho = Path(__file__).resolve().parent / "static" / "global.css"
     return "<style>" + caminho.read_text(encoding="utf-8") + "</style>"
 
+
+@st.cache_data(show_spinner=False)
+def _carregar_script_ux(nome: str) -> str:
+    """Mantem scripts de interface como arquivos JS, sem alterar injecao HTML."""
+    from pathlib import Path
+    return (Path(__file__).resolve().parent / "static" / nome).read_text(encoding="utf-8")
+
 @st.cache_data(show_spinner=False)
 def _get_global_css(tema: str = "escuro") -> str:
     """CSS global cacheado — montado uma vez por tema."""
@@ -592,59 +599,7 @@ st.markdown("""
 * { scrollbar-width: thin !important; scrollbar-color: var(--ta550) transparent !important; }
 </style>
 <script>
-(function injectScrollbarCSS() {
-    // Guard de instância única: o Streamlit re-renderiza este bloco a cada
-    // rerun. Sem o guard, cada clique criava um novo MutationObserver +
-    // setInterval que se acumulavam pela sessão, deixando o app cada vez
-    // mais lento. Agora instala UMA vez só.
-    if (window.__sdScrollbarReady) return;
-    window.__sdScrollbarReady = true;
-
-    const css = `
-        * { scrollbar-width: thin; scrollbar-color: var(--ta550) transparent; }
-        ::-webkit-scrollbar { width: 5px !important; height: 5px !important; }
-        ::-webkit-scrollbar-track { background: rgba(var(--rgb-n1),.40) !important; border-radius: 99px !important; }
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, var(--f-acc) 0%, var(--ta600) 100%) !important;
-            border-radius: 99px !important;
-            box-shadow: none;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--f-acc-l) !important;
-            box-shadow: none;
-        }
-        ::-webkit-scrollbar-corner { background: transparent !important; }
-    `;
-    function applyToDoc(doc) {
-        try {
-            if (!doc.getElementById('_sd_scrollbar_fix')) {
-                const s = doc.createElement('style');
-                s.id = '_sd_scrollbar_fix';
-                s.textContent = css;
-                (doc.head || doc.documentElement).appendChild(s);
-            }
-        } catch(e) {}
-    }
-    function scanIframes() {
-        document.querySelectorAll('iframe').forEach(function(f) {
-            try { applyToDoc(f.contentDocument || f.contentWindow.document); } catch(e) {}
-        });
-    }
-    // Debounce: o observer dispara a cada mutação do DOM (constantes no
-    // Streamlit). Sem debounce, varria todos os iframes centenas de vezes
-    // por segundo. Agora agrupa via requestAnimationFrame.
-    let _scheduled = false;
-    function scheduleScan() {
-        if (_scheduled) return;
-        _scheduled = true;
-        requestAnimationFrame(function() { _scheduled = false; scanIframes(); });
-    }
-    applyToDoc(document);
-    scanIframes();
-    try {
-        new MutationObserver(scheduleScan).observe(document.body, {childList:true, subtree:true});
-    } catch(e) {}
-})();
+""" + _carregar_script_ux("scrollbar.js") + """
 </script>
 """, unsafe_allow_html=True)
 
@@ -662,17 +617,7 @@ html.sd-anim-paused *::after { animation-play-state: paused !important; }
 }
 </style>
 <script>
-(function pauseAnimsWhenHidden(){
-    if (window.__sdVisReady) return;
-    window.__sdVisReady = true;
-    function sync(){
-        var h = document.documentElement;
-        if (document.hidden) h.classList.add('sd-anim-paused');
-        else h.classList.remove('sd-anim-paused');
-    }
-    document.addEventListener('visibilitychange', sync);
-    sync();
-})();
+""" + _carregar_script_ux("visibility.js") + """
 </script>
 """, unsafe_allow_html=True)
 
