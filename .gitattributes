@@ -1,12 +1,12 @@
 # Classify authored application code and auxiliary Windows automation.
-*.py linguist-language=Python
-*.pyw linguist-language=Python
-app/static/global.css linguist-language=CSS
-app/static/*.js linguist-language=JavaScript
-app/static/*.html linguist-language=HTML
-*.ps1 linguist-language=PowerShell
-*.bat linguist-language=Batchfile
-*.vbs linguist-language=VBScript
+*.py linguist-language=Python linguist-detectable=true
+*.pyw linguist-language=Python linguist-detectable=true
+app/static/global.css linguist-language=CSS linguist-detectable=true
+app/static/*.js linguist-language=JavaScript linguist-detectable=true
+app/static/*.html linguist-language=HTML linguist-detectable=true
+*.ps1 linguist-language=PowerShell linguist-detectable=true
+*.bat linguist-language=Batchfile linguist-detectable=true
+*.vbs linguist-language=VBScript linguist-detectable=true
 
 # Streamlit's configuration is TOML: include the real configuration format.
 .streamlit/config.toml linguist-language=TOML linguist-detectable=true
